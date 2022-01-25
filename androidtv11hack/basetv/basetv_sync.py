@@ -267,7 +267,7 @@ class BaseTVSync(BaseTV):
             The ID of the current app, or ``None`` if it could not be determined
 
         """
-        current_app_response = self._adb.shell(self._cmd_current_app)
+        current_app_response = self._adb.shell(self._cmd_current_app())
 
         return self._current_app(current_app_response)
 
@@ -282,7 +282,7 @@ class BaseTVSync(BaseTV):
             The state from the output of the ADB shell command ``dumpsys media_session``, or ``None`` if it could not be determined
 
         """
-        media_session_state_response = self._adb.shell(constants.CMD_MEDIA_SESSION_STATE_FULL)
+        media_session_state_response = self._adb.shell(self._cmd_current_app_media_session_state())
 
         return self._current_app_media_session_state(media_session_state_response)
 
@@ -336,6 +336,19 @@ class BaseTVSync(BaseTV):
 
         return media_session_state
 
+    def running_apps(self):
+        """Return a list of running user applications.
+
+        Returns
+        -------
+        list
+            A list of the running apps
+
+        """
+        running_apps_response = self._adb.shell(self._cmd_running_apps())
+
+        return self._running_apps(running_apps_response)
+
     def screen_on(self):
         """Check if the screen is on.
 
@@ -363,6 +376,29 @@ class BaseTVSync(BaseTV):
         output = self._adb.shell(constants.CMD_SCREEN_ON_AWAKE_WAKE_LOCK_SIZE)
 
         return self._screen_on_awake_wake_lock_size(output)
+
+    def stream_music_properties(self):
+        """Get various properties from the "STREAM_MUSIC" block from ``dumpsys audio``..
+
+        Returns
+        -------
+        audio_output_device : str, None
+            The current audio playback device, or ``None`` if it could not be determined
+        is_volume_muted : bool, None
+            Whether or not the volume is muted, or ``None`` if it could not be determined
+        volume : int, None
+            The absolute volume level, or ``None`` if it could not be determined
+        volume_level : float, None
+            The volume level (between 0 and 1), or ``None`` if it could not be determined
+
+        """
+        stream_music = self._get_stream_music()
+        audio_output_device = self._audio_output_device(stream_music)
+        volume = self._volume(stream_music, audio_output_device)
+        volume_level = self._volume_level(volume)
+        is_volume_muted = self._is_volume_muted(stream_music)
+
+        return audio_output_device, is_volume_muted, volume, volume_level
 
     def volume(self):
         """Get the absolute volume level.
@@ -474,7 +510,7 @@ class BaseTVSync(BaseTV):
             The ID of the app that will be launched
 
         """
-        self._adb.shell(self._cmd_launch_app.format(app))
+        self._adb.shell(self._cmd_launch_app(app))
 
     def stop_app(self, app):
         """Stop an app.
@@ -591,6 +627,19 @@ class BaseTVSync(BaseTV):
     def media_previous_track(self):
         """Send media previous action (results in rewind)."""
         self._key(constants.KEY_PREVIOUS)
+
+    # ======================================================================= #
+    #                                                                         #
+    #                   "key" methods: turn on/off commands                   #
+    #                                                                         #
+    # ======================================================================= #
+    def turn_on(self):
+        """Turn on the device."""
+        self._adb.shell(self._cmd_turn_on())
+
+    def turn_off(self):
+        """Turn off the device."""
+        self._adb.shell(self._cmd_turn_off())
 
     # ======================================================================= #
     #                                                                         #
